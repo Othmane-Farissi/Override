@@ -1,43 +1,62 @@
-int main() {
-    char file_password[41];   // at rbp-0xa0
-    char username[100];       // at rbp-0x70
-    char user_password[100];  // at rbp-0x110
-    FILE *file;
-    int bytes_read;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+void decrypt(int key);
+int test(int input, int constant);
+
+int main(void) {
+    int user_input;
     
-    // Read password from file
-    file = fopen("/home/users/level03/.pass", "r");
-    if (!file) error();
+    srand(time(NULL));
     
-    bytes_read = fread(file_password, 1, 41, file);
-    if (bytes_read != 41) error();
+    puts("***********************************");
+    puts("*\t\tlevel03\t\t**");
+    puts("***********************************");
+    printf("Password:");
     
-    fclose(file);
+    scanf("%d", &user_input);
+    test(user_input, 0x1337d00d);
     
-    // Display banner
-    puts("===== [ Secure Access System v1.0 ] =====");
-    puts("/***************************************\\");
-    puts("| You must login to access this system. |");
-    puts("\\***************************************/");
+    return 0;
+}
+
+int test(int user_input, int constant) {
+    int diff = constant - user_input;
     
-    // Get username
-    printf("--[ Username: ");
-    fgets(username, 100, stdin);
-    username[strcspn(username, "\n")] = 0;
-    
-    // Get password
-    printf("--[ Password: ");
-    fgets(user_password, 100, stdin);
-    user_password[strcspn(user_password, "\n")] = 0;
-    
-    puts("*****************************************");
-    
-    // Compare passwords
-    if (strncmp(file_password, user_password, 41) == 0) {
-        printf("Greetings, %s!\n", username);
-        system("/bin/sh");  // Shell!
+    if (diff <= 21) {
+        // Jump table - calls decrypt(diff)
+        decrypt(diff);
     } else {
-        printf("%s does not have access!\n", username);
-        exit(1);
+        // Random fallback
+        decrypt(rand());
+    }
+    return 0;
+}
+
+void decrypt(int key) {
+    // Encrypted string (16 bytes + null)
+    unsigned char encrypted[] = {
+        0x51, 0x7d, 0x7c, 0x75,  // "Q}|u"
+        0x60, 0x73, 0x66, 0x67,  // "`sfg"
+        0x7e, 0x73, 0x66, 0x7b,  // "~sf{"
+        0x7d, 0x7c, 0x61, 0x33,  // "}|a3"
+        0x00                      // null terminator
+    };
+    
+    unsigned char *decrypted = encrypted;
+    int len = strlen((char *)encrypted);
+    
+    // XOR decryption
+    for (int i = 0; i < len; i++) {
+        decrypted[i] = encrypted[i] ^ key;
+    }
+    
+    // Check if decrypted string matches "Congratulations!"
+    if (strcmp((char *)decrypted, "Congratulations!") == 0) {
+        system("/bin/sh");
+    } else {
+        puts("Invalid Password");
     }
 }
