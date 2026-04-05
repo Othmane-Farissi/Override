@@ -1,4 +1,4 @@
-# Override - Level00 Walkthrough
+# Level00 Walkthrough
 ## Initial Analysis
 ### 1. Connect to the VM
 **Examine the Binary**
