@@ -54,7 +54,7 @@ All defined functions:
 0x08048747  test
 0x0804885a  main
 ```
-4. Disassembling main
+### 4. Disassembling main
 ```bash
 (gdb) disas main
 assembly
