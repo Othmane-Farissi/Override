@@ -1,284 +1,463 @@
-void auth(char *login, unsigned int serial) {
+unsigned int get_unum() {
     /*
-    0x08048748 <+0>:	push   ebp
-    0x08048749 <+1>:	mov    ebp,esp
-    0x0804874b <+3>:	sub    esp,0x28
-        stack total = 40
-    0x0804874e <+6>:	mov    DWORD PTR [esp+0x4],0x8048a63
-    0x08048756 <+14>:	mov    eax,DWORD PTR [ebp+0x8]
-    0x08048759 <+17>:	mov    DWORD PTR [esp],eax
-    0x0804875c <+20>:	call   0x8048520 <strcspn@plt>
-    0x08048761 <+25>:	add    eax,DWORD PTR [ebp+0x8]
-    0x08048764 <+28>:	mov    BYTE PTR [eax],0x0
-    */
-    login[strcspn(login, "\n")] = 0; /* ebp+0x8 */
-    /*
-    0x08048767 <+31>:	mov    DWORD PTR [esp+0x4],0x20
-    0x0804876f <+39>:	mov    eax,DWORD PTR [ebp+0x8]
-    0x08048772 <+42>:	mov    DWORD PTR [esp],eax
-    0x08048775 <+45>:	call   0x80485d0 <strnlen@plt>
-    0x0804877a <+50>:	mov    DWORD PTR [ebp-0xc],eax
+    0x080485e7 <+0>:     push   ebp
+    0x080485e8 <+1>:     mov    ebp,esp
+    0x080485ea <+3>:     sub    esp,0x28
+        total_stack = 40
+    0x080485ed <+6>:     mov    DWORD PTR [ebp-0xc],0x0
         ebp-0xc = 12
     */
-    size_t len = strnlen(login, 32); /* ebp-0xc */
+    unsigned int input;
     /*
-    0x0804877d <+53>:	push   eax
-    0x0804877e <+54>:	xor    eax,eax
-    0x08048780 <+56>:	je     0x8048785 <auth+61>
-    0x08048782 <+58>:	add    esp,0x4
-    0x08048785 <+61>:	pop    eax
-    0x08048786 <+62>:	cmp    DWORD PTR [ebp-0xc],0x5
-    0x0804878a <+66>:	jg     0x8048796 <auth+78>
+    0x080485f4 <+13>:    mov    eax,ds:0x804a060
+    0x080485f9 <+18>:    mov    DWORD PTR [esp],eax
+    0x080485fc <+21>:    call   0x8048480 <fflush@plt>
     */
-    if (len > 5) {
-        /*
-        0x08048796 <+78>:	mov    DWORD PTR [esp+0xc],0x0
-        0x0804879e <+86>:	mov    DWORD PTR [esp+0x8],0x1
-        0x080487a6 <+94>:	mov    DWORD PTR [esp+0x4],0x0
-        0x080487ae <+102>:	mov    DWORD PTR [esp],0x0
-        0x080487b5 <+109>:	call   0x80485f0 <ptrace@plt>
-        0x080487ba <+114>:	cmp    eax,0xffffffff
-        0x080487bd <+117>:	jne    0x80487ed <auth+165>
-        */
-        if (ptrace(0, 0, 1, 0) == -1) {
-            /*
-            0x080487bf <+119>:	mov    DWORD PTR [esp],0x8048a68
-            0x080487c6 <+126>:	call   0x8048590 <puts@plt>
-            */
-            puts("\033[32m.----------------------------.");
-            /*
-            0x080487cb <+131>:	mov    DWORD PTR [esp],0x8048a8c
-            0x080487d2 <+138>:	call   0x8048590 <puts@plt>
-            */
-            puts("\033[31m| !! TAMPERING DETECTED !!  |");
-            /*
-            0x080487d7 <+143>:	mov    DWORD PTR [esp],0x8048ab0
-            0x080487de <+150>:	call   0x8048590 <puts@plt>
-            */
-            puts("\033[32m'----------------------------'");
-            /*
-            0x080487e3 <+155>:	mov    eax,0x1
-            0x080487e8 <+160>:	jmp    0x8048877 <auth+303>
-            */
-            return 1;
-        }
-        /*
-        0x080487ed <+165>:	mov    eax,DWORD PTR [ebp+0x8]
-        0x080487f0 <+168>:	add    eax,0x3                  login[3]
-        0x080487f3 <+171>:	movzx  eax,BYTE PTR [eax]
-        0x080487f6 <+174>:	movsx  eax,al
-        0x080487f9 <+177>:	xor    eax,0x1337               login[3] ^ 0x1337
-        0x080487fe <+182>:	add    eax,0x5eeded             (login[3] ^ 0x1337) + 0x5eeded
-        0x08048803 <+187>:	mov    DWORD PTR [ebp-0x10],eax 
-            ebp-0x10 = 16 - 12 = 4 ; int
-        */
-        int nb = (login[3] ^ 4919) + 6221293 /* ebp-0x10 */
-        /*
-        0x08048806 <+190>:	mov    DWORD PTR [ebp-0x14],0x0
-        ebp-0x14 = 20 - 16 = 4 ; int
-        */
-        int i = 0; /* ebp-0x14 */
-        /*
-        0x0804880d <+197>:	jmp    0x804885b <auth+275>
-        */
-        /*
-        0x0804885b <+275>:	mov    eax,DWORD PTR [ebp-0x14]
-        0x0804885e <+278>:	cmp    eax,DWORD PTR [ebp-0xc]
-        0x08048861 <+281>:	jl     0x804880f <auth+199>
-        */
-        while (i < len) {
-            /*
-            0x0804880f <+199>:	mov    eax,DWORD PTR [ebp-0x14]
-            0x08048812 <+202>:	add    eax,DWORD PTR [ebp+0x8]  login[i]
-            0x08048815 <+205>:	movzx  eax,BYTE PTR [eax]
-            0x08048818 <+208>:	cmp    al,0x1f
-            0x0804881a <+210>:	jg     0x8048823 <auth+219>
-            */
-            if (login[i] <= 31) {
-                /*
-                0x0804881c <+212>:	mov    eax,0x1
-                0x08048821 <+217>:	jmp    0x8048877 <auth+303>
-                */
-                return 1;
-            }
-            /*
-                hashing algo
-            0x08048823 <+219>:	mov    eax,DWORD PTR [ebp-0x14]
-            0x08048826 <+222>:	add    eax,DWORD PTR [ebp+0x8]      eax = login[i]
-            0x08048829 <+225>:	movzx  eax,BYTE PTR [eax]
-            0x0804882c <+228>:	movsx  eax,al
-            0x0804882f <+231>:	mov    ecx,eax
-            0x08048831 <+233>:	xor    ecx,DWORD PTR [ebp-0x10]     ecx = login[i] ^ nb
-            0x08048834 <+236>:	mov    edx,0x88233b2b               edx = 0x88233b2b
-            0x08048839 <+241>:	mov    eax,ecx                      eax = ecx
-            0x0804883b <+243>:	mul    edx                          edx:eax = (login[i] ^ nb) * 0x88233b2b
-            0x0804883d <+245>:	mov    eax,ecx                      eax = ecx
-            0x0804883f <+247>:	sub    eax,edx                      eax = eax - edx
-            0x08048841 <+249>:	shr    eax,1                        eax = eax / 2
-            0x08048843 <+251>:	add    eax,edx                      eax = eax + edx
-            0x08048845 <+253>:	shr    eax,0xa                      eax = eax / 1024
-            0x08048848 <+256>:	imul   eax,eax,0x539                edx:eax = eax * 0x539
-            0x0804884e <+262>:	mov    edx,ecx                      edx = ecx
-            0x08048850 <+264>:	sub    edx,eax                      edx = edx - eax
-            0x08048852 <+266>:	mov    eax,edx                      eax = edx
-            0x08048854 <+268>:	add    DWORD PTR [ebp-0x10],eax     nb += eax
-            */
-            nb += hashing_algo(login[i]);
-            /*
-            0x08048857 <+271>:	add    DWORD PTR [ebp-0x14],0x1 *login++
-            */
-            i++;
-        }
-        /*
-        0x08048863 <+283>:	mov    eax,DWORD PTR [ebp+0xc]
-            ebp+0xc = 12 = serial
-        0x08048866 <+286>:	cmp    eax,DWORD PTR [ebp-0x10]     BREAKPOINT HERE TO GET ebp-0x10 == serial
-        0x08048869 <+289>:	je     0x8048872 <auth+298>
-        */
-        if (serial != nb) {
-            /*
-            0x0804886b <+291>:	mov    eax,0x1
-            0x08048870 <+296>:	jmp    0x8048877 <auth+303>
-            */
-           return 1;
-        }
-        /*
-        0x08048872 <+298>:	mov    eax,0x0
-        */
-        return 0;
-    }
+    fflush(stdout);
     /*
-    0x0804878c <+68>:	mov    eax,0x1
-    0x08048791 <+73>:	jmp    0x8048877 <auth+303>
+    0x08048601 <+26>:    mov    eax,0x8048ad0
+    0x08048606 <+31>:    lea    edx,[ebp-0xc]
+    0x08048609 <+34>:    mov    DWORD PTR [esp+0x4],edx
+    0x0804860d <+38>:    mov    DWORD PTR [esp],eax
+    0x08048610 <+41>:    call   0x8048500 <__isoc99_scanf@plt>
     */
-    return 1;
+    scanf("%u", input);
     /*
-    0x08048877 <+303>:	leave  
-    0x08048878 <+304>:	ret
+    0x08048615 <+46>:    call   0x80485c4 <clear_stdin>
     */
+    clear_stdin();
+    /*
+    0x0804861a <+51>:    mov    eax,DWORD PTR [ebp-0xc]
+    0x0804861d <+54>:    leave  
+    0x0804861e <+55>:    ret  
+    */
+   return input;
 }
 
-int main(int ac, char **av) {
+int store_number(int *tab) {
     /*
-    0x08048879 <+0>:	push   ebp
-    0x0804887a <+1>:	mov    ebp,esp
-    0x0804887c <+3>:	and    esp,0xfffffff0
-    0x0804887f <+6>:	sub    esp,0x50
-        total stack 80
-    0x08048882 <+9>:	mov    eax,DWORD PTR [ebp+0xc]
-        ebp+0xc = 12 = argv[0]
-    0x08048885 <+12>:	mov    DWORD PTR [esp+0x1c],eax
-        esp+0x1c = 28
-    0x08048889 <+16>:	mov    eax,gs:0x14
-    0x0804888f <+22>:	mov    DWORD PTR [esp+0x4c],eax
-        esp+0x4c = 76 = 80 - 76 = 4 ; int
+    0x08048630 <+0>:	push   ebp
+    0x08048631 <+1>:	mov    ebp,esp
+    0x08048633 <+3>:	sub    esp,0x28
+        total stack = 40
+    0x08048636 <+6>:	mov    DWORD PTR [ebp-0x10],0x0
+        ebp-0x10 = 16
     */
-    int var1 = 20; /* check ? */
+    unsigned int input = 0; /* ebp-0x10 */
     /*
-    0x08048893 <+26>:	xor    eax,eax
-    0x08048895 <+28>:	push   eax
-    0x08048896 <+29>:	xor    eax,eax
-    0x08048898 <+31>:	je     0x804889d <main+36>
-    0x0804889a <+33>:	add    esp,0x4
-    0x0804889d <+36>:	pop    eax
-    0x0804889e <+37>:	mov    DWORD PTR [esp],0x8048ad4
-    0x080488a5 <+44>:	call   0x8048590 <puts@plt>
+    0x0804863d <+13>:	mov    DWORD PTR [ebp-0xc],0x0
+        ebp-0xc = 12
     */
-    puts("***********************************");
+    unsigned int index = 0; /* ebp-0xc */
     /*
-    0x080488aa <+49>:	mov    DWORD PTR [esp],0x8048af8
-    0x080488b1 <+56>:	call   0x8048590 <puts@plt>
+    0x08048644 <+20>:	mov    eax,0x8048ad3
+    0x08048649 <+25>:	mov    DWORD PTR [esp],eax
+    0x0804864c <+28>:	call   0x8048470 <printf@plt>
     */
-    puts("*\t\tlevel06\t\t  *");
+    printf(" Number: ");
     /*
-    0x080488b6 <+61>:	mov    DWORD PTR [esp],0x8048ad4
-    0x080488bd <+68>:	call   0x8048590 <puts@plt>
+    0x08048651 <+33>:	call   0x80485e7 <get_unum>
+    0x08048656 <+38>:	mov    DWORD PTR [ebp-0x10],eax
     */
-    puts("***********************************");
+    input = get_unum();
     /*
-    0x080488c2 <+73>:	mov    eax,0x8048b08
-    0x080488c7 <+78>:	mov    DWORD PTR [esp],eax
-    0x080488ca <+81>:	call   0x8048510 <printf@plt>
+    0x08048659 <+41>:	mov    eax,0x8048add
+    0x0804865e <+46>:	mov    DWORD PTR [esp],eax
+    0x08048661 <+49>:	call   0x8048470 <printf@plt>
     */
-    printf("-> Enter Login: ");
+    printf(" Index: ");
     /*
-    0x080488cf <+86>:	mov    eax,ds:0x804a060
-    0x080488d4 <+91>:	mov    DWORD PTR [esp+0x8],eax
-    0x080488d8 <+95>:	mov    DWORD PTR [esp+0x4],0x20
-    0x080488e0 <+103>:	lea    eax,[esp+0x2c]
-        esp+0x2c = 44 = 76 - 44 = 32 ; char[32]
-    0x080488e4 <+107>:	mov    DWORD PTR [esp],eax
-    0x080488e7 <+110>:	call   0x8048550 <fgets@plt>
+    0x08048666 <+54>:	call   0x80485e7 <get_unum>
+    0x0804866b <+59>:	mov    DWORD PTR [ebp-0xc],eax
     */
-    char buffer[32]; /* esp+0x2c */
-    fgets(buffer, 32, stdin);
+    index = get_unum();
     /*
-    0x080488ec <+115>:	mov    DWORD PTR [esp],0x8048ad4
-    0x080488f3 <+122>:	call   0x8048590 <puts@plt>
-    */
-    puts("***********************************");
-    /*
-    0x080488f8 <+127>:	mov    DWORD PTR [esp],0x8048b1c
-    0x080488ff <+134>:	call   0x8048590 <puts@plt>
-    */
-    puts("***** NEW ACCOUNT DETECTED ********");
-    /*
-    0x08048904 <+139>:	mov    DWORD PTR [esp],0x8048ad4
-    0x0804890b <+146>:	call   0x8048590 <puts@plt>
-    */
-    puts("***********************************");
-    /*
-    0x08048910 <+151>:	mov    eax,0x8048b40
-    0x08048915 <+156>:	mov    DWORD PTR [esp],eax
-    0x08048918 <+159>:	call   0x8048510 <printf@plt>
-    */
-    printf("-> Enter Serial: ");
-    /*
-    0x0804891d <+164>:	mov    eax,0x8048a60
-    0x08048922 <+169>:	lea    edx,[esp+0x28]
-        esp+0x28 = 40 = 44 - 40 = 4 ; int
-    0x08048926 <+173>:	mov    DWORD PTR [esp+0x4],edx
-    0x0804892a <+177>:	mov    DWORD PTR [esp],eax
-    0x0804892d <+180>:	call   0x80485e0 <__isoc99_scanf@plt>
-    */
-    unsigned int serial;
-    scanf("%u", &serial);
-    /*
-    0x08048932 <+185>:	mov    eax,DWORD PTR [esp+0x28]
-    0x08048936 <+189>:	mov    DWORD PTR [esp+0x4],eax
-    0x0804893a <+193>:	lea    eax,[esp+0x2c]
-    0x0804893e <+197>:	mov    DWORD PTR [esp],eax
-    0x08048941 <+200>:	call   0x8048748 <auth>
+    0x0804866e <+62>:	mov    ecx,DWORD PTR [ebp-0xc]
+    0x08048671 <+65>:	mov    edx,0xaaaaaaab
+    0x08048676 <+70>:	mov    eax,ecx
+    0x08048678 <+72>:	mul    edx                      edx = 0xaaaaaaab * index = division / 3 = index / 3
+    0x0804867a <+74>:	shr    edx,1                    edx = edx / 2
+    0x0804867c <+76>:	mov    eax,edx                  eax = edx
+    0x0804867e <+78>:	add    eax,eax                  eax = eax *2
+    0x08048680 <+80>:	add    eax,edx                  eax = eax + edx ; eax = edx + edx / 2 ;  reverse the division
+    0x08048682 <+82>:	mov    edx,ecx
+    0x08048684 <+84>:	sub    edx,eax                  edx = index - (index / 3) ; modulo
+    0x08048686 <+86>:	test   edx,edx                  == 0
+    0x08048688 <+88>:	je     0x8048697 <store_number+103>
     */
     /*
-    0x08048946 <+205>:	test   eax,eax
-    0x08048948 <+207>:	jne    0x8048969 <main+240>
+    0x0804868a <+90>:	mov    eax,DWORD PTR [ebp-0x10]
+    0x0804868d <+93>:	shr    eax,0x18
+    0x08048690 <+96>:	cmp    eax,0xb7
+    0x08048695 <+101>:	jne    0x80486c2 <store_number+146>
     */
-    if (auth(buffer, serial) == 0) {
+    if ( index % 3 == 0 || (input >> 24) == 183 ) {
         /*
-        0x0804894a <+209>:	mov    DWORD PTR [esp],0x8048b52
-        0x08048951 <+216>:	call   0x8048590 <puts@plt>
+        0x08048697 <+103>:	mov    DWORD PTR [esp],0x8048ae6
+        0x0804869e <+110>:	call   0x80484c0 <puts@plt>
         */
-        puts("Authenticated!");
+        puts(" *** ERROR! ***");
         /*
-        0x08048956 <+221>:	mov    DWORD PTR [esp],0x8048b61
-        0x0804895d <+228>:	call   0x80485a0 <system@plt>
+        0x080486a3 <+115>:	mov    DWORD PTR [esp],0x8048af8
+        0x080486aa <+122>:	call   0x80484c0 <puts@plt>
         */
-        system("/bin/sh");
+        puts("   This index is reserved for wil!");
         /*
-        0x08048962 <+233>:	mov    eax,0x0
-        0x08048967 <+238>:	jmp    0x804896e <main+245>
+        0x080486af <+127>:	mov    DWORD PTR [esp],0x8048ae6
+        0x080486b6 <+134>:	call   0x80484c0 <puts@plt>
         */
-       return 0;
+        puts(" *** ERROR! ***");
+        /*
+        0x080486bb <+139>:	mov    eax,0x1
+        0x080486c0 <+144>:	jmp    0x80486d5 <store_number+165>
+        */
+        return 1;
     }
     /*
-    0x08048969 <+240>:	mov    eax,0x1
-    0x0804896e <+245>:	mov    edx,DWORD PTR [esp+0x4c]
-    0x08048972 <+249>:	xor    edx,DWORD PTR gs:0x14
-    0x08048979 <+256>:	je     0x8048980 <main+263>
-    0x0804897b <+258>:	call   0x8048580 <__stack_chk_fail@plt>
-    0x08048980 <+263>:	leave  
-    0x08048981 <+264>:	ret 
+    0x080486c2 <+146>:	mov    eax,DWORD PTR [ebp-0xc]  index
+    0x080486c5 <+149>:	shl    eax,0x2
+    0x080486c8 <+152>:	add    eax,DWORD PTR [ebp+0x8]  tab[index]
+    0x080486cb <+155>:	mov    edx,DWORD PTR [ebp-0x10] input
+    0x080486ce <+158>:	mov    DWORD PTR [eax],edx
     */
-    return 1;
+    tab[index] = input;
+    /*
+    0x080486d0 <+160>:	mov    eax,0x0
+    0x080486d5 <+165>:	leave  
+    0x080486d6 <+166>:	ret  
+    */
+    return 0;
+}
+
+int read_number(int *tab) {
+    /*
+    0x080486d7 <+0>:	push   ebp
+    0x080486d8 <+1>:	mov    ebp,esp
+    0x080486da <+3>:	sub    esp,0x28
+        total stack = 40
+    0x080486dd <+6>:	mov    DWORD PTR [ebp-0xc],0x0
+        ebp-0xc = 12
+    */
+    unsigned int input = 0; /* ebp-0xc */
+    /*
+    0x080486e4 <+13>:	mov    eax,0x8048add
+    0x080486e9 <+18>:	mov    DWORD PTR [esp],eax
+    0x080486ec <+21>:	call   0x8048470 <printf@plt>
+    */
+    printf(" Index: ");
+    /*
+    0x080486f1 <+26>:	call   0x80485e7 <get_unum>
+    0x080486f6 <+31>:	mov    DWORD PTR [ebp-0xc],eax
+    */
+    input = get_unum();
+    /*
+    0x080486f9 <+34>:	mov    eax,DWORD PTR [ebp-0xc]
+    0x080486fc <+37>:	shl    eax,0x2
+    0x080486ff <+40>:	add    eax,DWORD PTR [ebp+0x8]
+    0x08048702 <+43>:	mov    edx,DWORD PTR [eax]
+    0x08048704 <+45>:	mov    eax,0x8048b1b
+    0x08048709 <+50>:	mov    DWORD PTR [esp+0x8],edx
+    0x0804870d <+54>:	mov    edx,DWORD PTR [ebp-0xc]
+    0x08048710 <+57>:	mov    DWORD PTR [esp+0x4],edx
+    0x08048714 <+61>:	mov    DWORD PTR [esp],eax
+    0x08048717 <+64>:	call   0x8048470 <printf@plt>
+    */
+    printf(" Number at data[%u] is %u\n", input, tab[input]);
+    /*
+    0x0804871c <+69>:	mov    eax,0x0
+    0x08048721 <+74>:	leave  
+    0x08048722 <+75>:	ret  
+    */
+   return 0;
+}
+
+int main(int argc, char **argv, char **env) {
+    /*
+    0x08048723 <+0>:	push   ebp
+    0x08048724 <+1>:	mov    ebp,esp
+    0x08048726 <+3>:	push   edi
+    0x08048727 <+4>:	push   esi
+    0x08048728 <+5>:	push   ebx
+    0x08048729 <+6>:	and    esp,0xfffffff0
+    0x0804872c <+9>:	sub    esp,0x1d0
+        total stack = 464
+    0x08048732 <+15>:	mov    eax,DWORD PTR [ebp+0xc]
+        ebp+0xc = 12
+    0x08048735 <+18>:	mov    DWORD PTR [esp+0x1c],eax
+        esp+0x1c = 28
+    0x08048739 <+22>:	mov    eax,DWORD PTR [ebp+0x10]
+        ebp+0x10 = 16
+    0x0804873c <+25>:	mov    DWORD PTR [esp+0x18],eax
+        esp+0x18 = 24
+    0x08048740 <+29>:	mov    eax,gs:0x14
+    0x08048746 <+35>:	mov    DWORD PTR [esp+0x1cc],eax
+        esp+0x1cc = 460
+    0x0804874d <+42>:	xor    eax,eax
+    0x0804874f <+44>:	mov    DWORD PTR [esp+0x1b4],0x0
+        esp+0x1b4 = 436
+    */
+    int ret = 0; /* esp+0x1b4 */
+    /*
+    0x0804875a <+55>:	mov    DWORD PTR [esp+0x1b8],0x0
+        esp+0x1b8 = 440
+    */
+    char buffer[20]; /* esp+0x1b8 */
+    /*
+    0x08048765 <+66>:	mov    DWORD PTR [esp+0x1bc],0x0
+        esp+0x1bc = 444
+    0x08048770 <+77>:	mov    DWORD PTR [esp+0x1c0],0x0
+        esp+0x1c0 = 448
+    0x0804877b <+88>:	mov    DWORD PTR [esp+0x1c4],0x0
+        esp+0x1c4 = 452
+    0x08048786 <+99>:	mov    DWORD PTR [esp+0x1c8],0x0
+        esp+0x1c8 = 456
+    0x08048791 <+110>:	lea    ebx,[esp+0x24]
+        esp+0x24 = 0x24
+    0x08048795 <+114>:	mov    eax,0x0
+    0x0804879a <+119>:	mov    edx,0x64
+    0x0804879f <+124>:	mov    edi,ebx
+    0x080487a1 <+126>:	mov    ecx,edx
+    0x080487a3 <+128>:	rep stos DWORD PTR es:[edi],eax
+    */
+    int tab[100] = 0; /* esp+0x24 */
+    /*
+    0x080487a5 <+130>:	jmp    0x80487ea <main+199>
+    */
+    /*
+    0x080487ea <+199>:	mov    eax,DWORD PTR [esp+0x1c]
+        esp+0x1c = 28 ; argv
+    0x080487ee <+203>:	mov    eax,DWORD PTR [eax]
+    0x080487f0 <+205>:	test   eax,eax
+    0x080487f2 <+207>:	jne    0x80487a7 <main+132>
+    */
+    for (int i = 0; argv[i] != 0; i++) {
+        /*
+        0x080487a7 <+132>:	mov    eax,DWORD PTR [esp+0x1c]
+        0x080487ab <+136>:	mov    eax,DWORD PTR [eax]
+        0x080487ad <+138>:	mov    DWORD PTR [esp+0x14],0xffffffff
+        0x080487b5 <+146>:	mov    edx,eax
+        0x080487b7 <+148>:	mov    eax,0x0
+        0x080487bc <+153>:	mov    ecx,DWORD PTR [esp+0x14]
+        0x080487c0 <+157>:	mov    edi,edx
+        0x080487c2 <+159>:	repnz scas al,BYTE PTR es:[edi]         strlen(argv[i])
+        0x080487c4 <+161>:	mov    eax,ecx
+        0x080487c6 <+163>:	not    eax
+        0x080487c8 <+165>:	lea    edx,[eax-0x1]
+        0x080487cb <+168>:	mov    eax,DWORD PTR [esp+0x1c]
+        0x080487cf <+172>:	mov    eax,DWORD PTR [eax]
+        0x080487d1 <+174>:	mov    DWORD PTR [esp+0x8],edx
+        0x080487d5 <+178>:	mov    DWORD PTR [esp+0x4],0x0
+        0x080487dd <+186>:	mov    DWORD PTR [esp],eax
+        0x080487e0 <+189>:	call   0x80484f0 <memset@plt>
+        0x080487e5 <+194>:	add    DWORD PTR [esp+0x1c],0x4
+        */
+        memset(argv[i], 0, strlen(argv[i]) - 1);
+    }
+    /*
+    0x080487f4 <+209>:	jmp    0x8048839 <main+278>
+    */
+    /*
+    0x08048839 <+278>:	mov    eax,DWORD PTR [esp+0x18]
+        esp+0x18 = 24 ; env
+    0x0804883d <+282>:	mov    eax,DWORD PTR [eax]
+    0x0804883f <+284>:	test   eax,eax
+    0x08048841 <+286>:	jne    0x80487f6 <main+211>
+    */
+    for (int i = 0; env[i] != 0, i++) {
+        /*
+        0x080487f6 <+211>:	mov    eax,DWORD PTR [esp+0x18]
+        0x080487fa <+215>:	mov    eax,DWORD PTR [eax]
+        0x080487fc <+217>:	mov    DWORD PTR [esp+0x14],0xffffffff
+        0x08048804 <+225>:	mov    edx,eax
+        0x08048806 <+227>:	mov    eax,0x0
+        0x0804880b <+232>:	mov    ecx,DWORD PTR [esp+0x14]
+        0x0804880f <+236>:	mov    edi,edx
+        0x08048811 <+238>:	repnz scas al,BYTE PTR es:[edi]         strlen(env[i])
+        0x08048813 <+240>:	mov    eax,ecx
+        0x08048815 <+242>:	not    eax
+        0x08048817 <+244>:	lea    edx,[eax-0x1]
+        0x0804881a <+247>:	mov    eax,DWORD PTR [esp+0x18]
+        0x0804881e <+251>:	mov    eax,DWORD PTR [eax]
+        0x08048820 <+253>:	mov    DWORD PTR [esp+0x8],edx
+        0x08048824 <+257>:	mov    DWORD PTR [esp+0x4],0x0
+        0x0804882c <+265>:	mov    DWORD PTR [esp],eax
+        0x0804882f <+268>:	call   0x80484f0 <memset@plt>
+        0x08048834 <+273>:	add    DWORD PTR [esp+0x18],0x4
+        */
+        memset(env[i], 0, strlen(env[i] - 1));
+    }
+    /*
+    0x08048843 <+288>:	mov    DWORD PTR [esp],0x8048b38
+    0x0804884a <+295>:	call   0x80484c0 <puts@plt>
+    */
+    puts("----------------------------------------------------\n"\
+        "\n  Welcome to wil's crappy number storage service!   \n"\
+        "----------------------------------------------------"\
+        "\n Commands:                                     ");
+    while (1) {
+        /*
+        0x0804884f <+300>:	mov    eax,0x8048d4b
+        0x08048854 <+305>:	mov    DWORD PTR [esp],eax
+        0x08048857 <+308>:	call   0x8048470 <printf@plt>
+        */
+        printf("Input command: ");
+        /*
+        0x0804885c <+313>:	mov    DWORD PTR [esp+0x1b4],0x1
+        */
+        ret = 1;
+        /*
+        0x08048867 <+324>:	mov    eax,ds:0x804a040
+        0x0804886c <+329>:	mov    DWORD PTR [esp+0x8],eax
+        0x08048870 <+333>:	mov    DWORD PTR [esp+0x4],0x14
+        0x08048878 <+341>:	lea    eax,[esp+0x1b8]
+            esp+0x1b8 = 440
+        0x0804887f <+348>:	mov    DWORD PTR [esp],eax
+        0x08048882 <+351>:	call   0x80484a0 <fgets@plt>
+        */
+        fgets(&buffer, 20, stdin);
+        /*
+        0x08048887 <+356>:	lea    eax,[esp+0x1b8]
+        0x0804888e <+363>:	mov    DWORD PTR [esp+0x14],0xffffffff
+        0x08048896 <+371>:	mov    edx,eax
+        0x08048898 <+373>:	mov    eax,0x0
+        0x0804889d <+378>:	mov    ecx,DWORD PTR [esp+0x14]
+        0x080488a1 <+382>:	mov    edi,edx
+        0x080488a3 <+384>:	repnz scas al,BYTE PTR es:[edi]         strlen(buffer)
+        0x080488a5 <+386>:	mov    eax,ecx
+        0x080488a7 <+388>:	not    eax
+        0x080488a9 <+390>:	sub    eax,0x1
+        0x080488ac <+393>:	sub    eax,0x1
+        0x080488af <+396>:	mov    BYTE PTR [esp+eax*1+0x1b8],0x0
+        */
+        buffer[strlen(buffer) - 2] = 0;
+        /*
+        0x080488b7 <+404>:	lea    eax,[esp+0x1b8]
+        0x080488be <+411>:	mov    edx,eax
+        0x080488c0 <+413>:	mov    eax,0x8048d5b
+        0x080488c5 <+418>:	mov    ecx,0x5
+        0x080488ca <+423>:	mov    esi,edx
+        0x080488cc <+425>:	mov    edi,eax
+        0x080488ce <+427>:	repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]   strncmp("store", buffer, 5)
+        0x080488d0 <+429>:	seta   dl
+        0x080488d3 <+432>:	setb   al
+        0x080488d6 <+435>:	mov    ecx,edx
+        0x080488d8 <+437>:	sub    cl,al
+        0x080488da <+439>:	mov    eax,ecx
+        0x080488dc <+441>:	movsx  eax,al
+        0x080488df <+444>:	test   eax,eax
+        0x080488e1 <+446>:	jne    0x80488f8 <main+469>
+        */
+        if (strncmp("store", buffer, 5) == 0) {
+            /*
+            0x080488e3 <+448>:	lea    eax,[esp+0x24]
+            0x080488e7 <+452>:	mov    DWORD PTR [esp],eax
+            0x080488ea <+455>:	call   0x8048630 <store_number>
+            0x080488ef <+460>:	mov    DWORD PTR [esp+0x1b4],eax
+            */
+            ret = store_number(&tab);
+            /*
+            0x080488f6 <+467>:	jmp    0x8048965 <main+578>
+            */
+        /*
+        0x080488f8 <+469>:	lea    eax,[esp+0x1b8]
+        0x080488ff <+476>:	mov    edx,eax
+        0x08048901 <+478>:	mov    eax,0x8048d61
+        0x08048906 <+483>:	mov    ecx,0x4
+        0x0804890b <+488>:	mov    esi,edx
+        0x0804890d <+490>:	mov    edi,eax
+        0x0804890f <+492>:	repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]   strncmp("read", buffer, 4)
+        0x08048911 <+494>:	seta   dl
+        0x08048914 <+497>:	setb   al
+        0x08048917 <+500>:	mov    ecx,edx
+        0x08048919 <+502>:	sub    cl,al
+        0x0804891b <+504>:	mov    eax,ecx
+        0x0804891d <+506>:	movsx  eax,al
+        0x08048920 <+509>:	test   eax,eax
+        0x08048922 <+511>:	jne    0x8048939 <main+534>
+        */
+        } else if (strncmp("read", buffer, 4) == 0) {
+            /*
+            0x08048924 <+513>:	lea    eax,[esp+0x24]
+            0x08048928 <+517>:	mov    DWORD PTR [esp],eax
+            0x0804892b <+520>:	call   0x80486d7 <read_number>
+            0x08048930 <+525>:	mov    DWORD PTR [esp+0x1b4],eax
+            */
+            ret = read_number(&tab);
+            /*
+            0x08048937 <+532>:	jmp    0x8048965 <main+578>
+            */
+        /*
+        0x08048939 <+534>:	lea    eax,[esp+0x1b8]
+        0x08048940 <+541>:	mov    edx,eax
+        0x08048942 <+543>:	mov    eax,0x8048d66
+        0x08048947 <+548>:	mov    ecx,0x4
+        0x0804894c <+553>:	mov    esi,edx
+        0x0804894e <+555>:	mov    edi,eax
+        0x08048950 <+557>:	repz cmps BYTE PTR ds:[esi],BYTE PTR es:[edi]   strncmp("quit", buffer, 4)
+        0x08048952 <+559>:	seta   dl
+        0x08048955 <+562>:	setb   al
+        0x08048958 <+565>:	mov    ecx,edx
+        0x0804895a <+567>:	sub    cl,al
+        0x0804895c <+569>:	mov    eax,ecx
+        0x0804895e <+571>:	movsx  eax,al
+        0x08048961 <+574>:	test   eax,eax
+        0x08048963 <+576>:	je     0x80489cf <main+684>
+        */
+        } else if (strncmp("quit", buffer, 4) == 0) {
+            return 0;
+        }
+        /*
+        0x08048965 <+578>:	cmp    DWORD PTR [esp+0x1b4],0x0
+        0x0804896d <+586>:	je     0x8048989 <main+614>
+        */
+        if (ret != 0) {
+            /*
+            0x0804896f <+588>:	mov    eax,0x8048d6b
+            0x08048974 <+593>:	lea    edx,[esp+0x1b8]
+            0x0804897b <+600>:	mov    DWORD PTR [esp+0x4],edx
+            0x0804897f <+604>:	mov    DWORD PTR [esp],eax
+            0x08048982 <+607>:	call   0x8048470 <printf@plt>
+            */
+            printf(" Failed to do %s command\n", buffer);
+            /*
+            0x08048987 <+612>:	jmp    0x80489a1 <main+638>
+            */
+        } else {
+            /*
+            0x08048989 <+614>:	mov    eax,0x8048d88
+            0x0804898e <+619>:	lea    edx,[esp+0x1b8]
+            0x08048995 <+626>:	mov    DWORD PTR [esp+0x4],edx
+            0x08048999 <+630>:	mov    DWORD PTR [esp],eax
+            0x0804899c <+633>:	call   0x8048470 <printf@plt>
+            */
+            printf(" Completed %s command successfully\n", buffer);
+        }
+        /*
+        0x080489a1 <+638>:	lea    eax,[esp+0x1b8]
+        0x080489a8 <+645>:	mov    DWORD PTR [eax],0x0
+        0x080489ae <+651>:	mov    DWORD PTR [eax+0x4],0x0
+        0x080489b5 <+658>:	mov    DWORD PTR [eax+0x8],0x0
+        0x080489bc <+665>:	mov    DWORD PTR [eax+0xc],0x0
+        0x080489c3 <+672>:	mov    DWORD PTR [eax+0x10],0x0
+        */
+        bzero(buffer, 20);
+    /*
+    0x080489ca <+679>:	jmp    0x804884f <main+300>     loop
+    */
+    }
+    /*
+    0x080489cf <+684>:	nop
+    0x080489d0 <+685>:	mov    eax,0x0
+    0x080489d5 <+690>:	mov    esi,DWORD PTR [esp+0x1cc]
+    0x080489dc <+697>:	xor    esi,DWORD PTR gs:0x14
+    0x080489e3 <+704>:	je     0x80489ea <main+711>
+    0x080489e5 <+706>:	call   0x80484b0 <__stack_chk_fail@plt>
+    0x080489ea <+711>:	lea    esp,[ebp-0xc]
+    0x080489ed <+714>:	pop    ebx
+    0x080489ee <+715>:	pop    esi
+    0x080489ef <+716>:	pop    edi
+    0x080489f0 <+717>:	pop    ebp
+    0x080489f1 <+718>:	ret  
+    */
+   return 0;
 }

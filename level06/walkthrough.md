@@ -1,260 +1,327 @@
-# Level03 Walkthrough
+# Level06 Walkthrough
 ## Initial Analysis
 ### 1. Examine the Binary
 ```bash
-level03@OverRide:~$ ls -la
+level06@OverRide:~$ ls -la
 total 17
-dr-xr-x---+ 1 level03 level03   80 Sep 13  2016 .
+dr-xr-x---+ 1 level06 level06   80 Sep 13  2016 .
 dr-x--x--x  1 root    root     260 Oct  2  2016 ..
--rw-r--r--  1 level03 level03  220 Sep 10  2016 .bash_logout
+-rw-r--r--  1 level06 level06  220 Sep 10  2016 .bash_logout
 lrwxrwxrwx  1 root    root       7 Sep 13  2016 .bash_profile -> .bashrc
--rw-r--r--  1 level03 level03 3533 Sep 10  2016 .bashrc
--rwsr-s---+ 1 level04 users   7480 Sep 10  2016 level03
--rw-r--r--+ 1 level03 level03   41 Oct 19  2016 .pass
--rw-r--r--  1 level03 level03  675 Sep 10  2016 .profile
+-rw-r--r--  1 level06 level06 3533 Sep 10  2016 .bashrc
+-rwsr-s---+ 1 level07 users   6860 Sep 10  2016 level06
+-rw-r--r--+ 1 level06 level06   41 Oct 19  2016 .pass
+-rw-r--r--  1 level06 level06  675 Sep 10  2016 .profile
 ```
 **Key observations:**
 
 setuid and setgid binary (s flags in permissions)
 
-Owned by level04 user
+Owned by level07 user
 
-When executed, runs with level04 privileges
+When executed, runs with level07 privileges
 
-### 3. Test Basic Execution
+## 2. Test Basic Execution
 ```bash
-level03@OverRide:~$ ./level03
+level06@OverRide:~$ ./level06
 ***********************************
-*		level03		**
+*		level06		  *
 ***********************************
-Password: test
-
-Invalid Password
+-> Enter Login: test
+***********************************
+***** NEW ACCOUNT DETECTED ********
+***********************************
+-> Enter Serial: 12345
 ```
+**Observations:**
+
+Program asks for login and serial
+
+No success message with wrong credentials
+
+Must find valid login/serial pair
+
 ## Reverse Engineering
-### 4. Function Analysis
+### 3. Function Analysis
 ```bash
 (gdb) info functions
 All defined functions:
-0x08048480  printf@plt
-0x08048490  fflush@plt
-0x080484a0  getchar@plt
-0x080484b0  time@plt
-0x080484c0  __stack_chk_fail@plt
-0x080484d0  puts@plt
-0x080484e0  system@plt      ← Shell available!
-0x08048500  srand@plt
-0x08048520  rand@plt
-0x08048530  __isoc99_scanf@plt
-0x080485f4  clear_stdin
-0x08048617  get_unum
-0x0804864f  prog_timeout
-0x08048660  decrypt
-0x08048747  test
-0x0804885a  main
+0x08048510  printf@plt
+0x08048520  strcspn@plt
+0x08048530  fflush@plt
+0x08048540  getchar@plt
+0x08048550  fgets@plt
+0x08048560  signal@plt
+0x08048570  alarm@plt
+0x08048580  __stack_chk_fail@plt
+0x08048590  puts@plt
+0x080485a0  system@plt          ← Target!
+0x080485e0  __isoc99_scanf@plt
+0x080485f0  ptrace@plt           ← Anti-debugging!
+0x08048748  auth
+0x08048879  main
 ```
-### 5. Disassembling main
-```assembly
+### 4. Disassembling main
+```bash
 (gdb) disas main
 assembly
-0x0804885a <+0>:     push   %ebp
-0x0804885b <+1>:     mov    %esp,%ebp
-0x0804885d <+3>:     and    $0xfffffff0,%esp
-0x08048860 <+6>:     sub    $0x20,%esp
-
-# Seed random with time()
-0x0804886c <+18>:    movl   $0x0,(%esp)
-0x08048873 <+25>:    call   0x80484b0 <time@plt>
-0x08048878 <+30>:    mov    %eax,(%esp)
-0x0804887b <+33>:    call   0x8048500 <srand@plt>
+0x08048879 <+0>:     push   %ebp
+0x0804887a <+1>:     mov    %esp,%ebp
+0x0804887c <+3>:     and    $0xfffffff0,%esp
+0x0804887f <+6>:     sub    $0x50,%esp
 
 # Print banner
-0x08048880 <+38>:    movl   $0x8048a48,(%esp)
-0x08048887 <+45>:    call   0x80484d0 <puts@plt>
-0x0804888c <+50>:    movl   $0x8048a6c,(%esp)
-0x08048893 <+57>:    call   0x80484d0 <puts@plt>
-0x08048898 <+62>:    movl   $0x8048a48,(%esp)
-0x0804889f <+69>:    call   0x80484d0 <puts@plt>
+0x080488a5 <+44>:    call   0x8048590 <puts@plt>   # "***********************************"
+0x080488b1 <+56>:    call   0x8048590 <puts@plt>   # "*            level06              *"
+0x080488bd <+68>:    call   0x8048590 <puts@plt>   # "***********************************"
 
-# Print "Password:"
-0x080488a4 <+74>:    mov    $0x8048a7b,%eax
-0x080488a9 <+79>:    mov    %eax,(%esp)
-0x080488ac <+82>:    call   0x8048480 <printf@plt>
+# Get login with fgets (32 bytes max)
+0x080488cf <+86>:    mov    0x804a060,%eax        # stdin
+0x080488d4 <+91>:    mov    %eax,0x8(%esp)
+0x080488d8 <+95>:    movl   $0x20,0x4(%esp)       # 32 bytes
+0x080488e0 <+103>:   lea    0x2c(%esp),%eax       # buffer at esp+0x2c
+0x080488e7 <+110>:   call   0x8048550 <fgets@plt>
 
-# Read password input
-0x080488b1 <+87>:    mov    $0x8048a85,%eax      # "%d" format
-0x080488b6 <+92>:    lea    0x1c(%esp),%edx      # &input
-0x080488ba <+96>:    mov    %edx,0x4(%esp)
-0x080488be <+100>:   mov    %eax,(%esp)
-0x080488c1 <+103>:   call   0x8048530 <__isoc99_scanf@plt>
+# Print more banner
+0x080488f3 <+122>:   call   0x8048590 <puts@plt>   # "***********************************"
+0x080488ff <+134>:   call   0x8048590 <puts@plt>   # "***** NEW ACCOUNT DETECTED ********"
+0x0804890b <+146>:   call   0x8048590 <puts@plt>   # "***********************************"
 
-# Call test(input, 0x1337d00d)
-0x080488c6 <+108>:   mov    0x1c(%esp),%eax
-0x080488ca <+112>:   movl   $0x1337d00d,0x4(%esp)
-0x080488d2 <+120>:   mov    %eax,(%esp)
-0x080488d5 <+123>:   call   0x8048747 <test>
-0x080488da <+128>:   mov    $0x0,%eax
-0x080488df <+133>:   leave
-0x080488e0 <+134>:   ret
+# Get serial with scanf
+0x0804891d <+164>:   mov    $0x8048a60,%eax       # "%d" format
+0x08048922 <+169>:   lea    0x28(%esp),%edx       # buffer for serial
+0x08048926 <+173>:   mov    %edx,0x4(%esp)
+0x0804892a <+177>:   mov    %eax,(%esp)
+0x0804892d <+180>:   call   0x80485e0 <__isoc99_scanf@plt>
+
+# Call auth(login, serial)
+0x08048932 <+185>:   mov    0x28(%esp),%eax       # serial input
+0x08048936 <+189>:   mov    %eax,0x4(%esp)
+0x0804893a <+193>:   lea    0x2c(%esp),%eax       # login buffer
+0x0804893e <+197>:   mov    %eax,(%esp)
+0x08048941 <+200>:   call   0x8048748 <auth>
+
+# If auth returns 0, spawn shell
+0x08048946 <+205>:   test   %eax,%eax
+0x08048948 <+207>:   jne    0x8048969 <main+240>
+0x0804894a <+209>:   movl   $0x8048b52,(%esp)     # "Authenticated!"
+0x08048951 <+216>:   call   0x8048590 <puts@plt>
+0x08048956 <+221>:   movl   $0x8048b61,(%esp)     # "/bin/sh"
+0x0804895d <+228>:   call   0x80485a0 <system@plt> # SPAWN SHELL! 🎯
 ```
-### 6. Disassembling test - The Jump Table
+### 5. Disassembling auth - The Anti-Debugging
+```bash
+(gdb) disas auth
+assembly
+0x08048748 <+0>:     push   %ebp
+0x08048749 <+1>:     mov    %esp,%ebp
+0x0804874b <+3>:     sub    $0x28,%esp
+
+# Remove newline from login
+0x0804874e <+6>:     movl   $0x8048a63,0x4(%esp)  # "\n"
+0x08048756 <+14>:    mov    0x8(%ebp),%eax        # login
+0x08048759 <+17>:    mov    %eax,(%esp)
+0x0804875c <+20>:    call   0x8048520 <strcspn@plt>
+0x08048761 <+25>:    add    0x8(%ebp),%eax
+0x08048764 <+28>:    movb   $0x0,(%eax)           # replace newline with null
+
+# Check login length
+0x08048767 <+31>:    movl   $0x20,0x4(%esp)       # max 32
+0x0804876f <+39>:    mov    0x8(%ebp),%eax
+0x08048772 <+42>:    mov    %eax,(%esp)
+0x08048775 <+45>:    call   0x80485d0 <strnlen@plt>
+0x0804877a <+50>:    mov    %eax,-0xc(%ebp)       # len
+
+# If len <= 5, authentication fails
+0x08048786 <+62>:    cmpl   $0x5,-0xc(%ebp)
+0x0804878a <+66>:    jg     0x8048796 <auth+78>
+0x0804878c <+68>:    mov    $0x1,%eax
+0x08048791 <+73>:    jmp    0x8048877 <auth+303>
+
+# ANTI-DEBUGGING: ptrace check
+0x08048796 <+78>:    movl   $0x0,0xc(%esp)
+0x0804879e <+86>:    movl   $0x1,0x8(%esp)
+0x080487a6 <+94>:    movl   $0x0,0x4(%esp)
+0x080487ae <+102>:   movl   $0x0,(%esp)
+0x080487b5 <+109>:   call   0x80485f0 <ptrace@plt>
+0x080487ba <+114>:   cmp    $0xffffffff,%eax
+0x080487bd <+117>:   jne    0x80487ed <auth+165>
+
+# If ptrace fails (being debugged), print error and exit
+0x080487bf <+119>:   movl   $0x8048a68,(%esp)     # "No ptrace for you"
+0x080487c6 <+126>:   call   0x8048590 <puts@plt>
+0x080487cb <+131>:   movl   $0x8048a8c,(%esp)     # "Sorry, no shell for you"
+0x080487d2 <+138>:   call   0x8048590 <puts@plt>
+0x080487d7 <+143>:   movl   $0x8048ab0,(%esp)     # "Don't try to hack us!"
+0x080487de <+150>:   call   0x8048590 <puts@plt>
+0x080487e3 <+155>:   mov    $0x1,%eax
+0x080487e8 <+160>:   jmp    0x8048877 <auth+303>
+```
+### 6. The Serial Generation Algorithm
+After ptrace check, the algorithm computes the expected serial:
+
 ```assembly
-(gdb) disas test
-0x08048747 <+0>:     push   %ebp
-0x08048748 <+1>:     mov    %esp,%ebp
-0x0804874a <+3>:     sub    $0x28,%esp
+0x080487ed <+165>:   mov    0x8(%ebp),%eax        # login
+0x080487f0 <+168>:   add    $0x3,%eax             # login[3] (4th character)
+0x080487f3 <+171>:   movzbl (%eax),%eax
+0x080487f6 <+174>:   movsbl %al,%eax
+0x080487f9 <+177>:   xor    $0x1337,%eax
+0x080487fe <+182>:   add    $0x5eeded,%eax
+0x08048803 <+187>:   mov    %eax,-0x10(%ebp)      # initial value
 
-# Calculate diff = param2 - param1
-0x0804874d <+6>:     mov    0x8(%ebp),%eax      # param1 (user input)
-0x08048750 <+9>:     mov    0xc(%ebp),%edx      # param2 (0x1337d00d)
-0x08048753 <+12>:    mov    %edx,%ecx
-0x08048755 <+14>:    sub    %eax,%ecx
-0x08048757 <+16>:    mov    %ecx,%eax
-0x08048759 <+18>:    mov    %eax,-0xc(%ebp)     # diff = 0x1337d00d - user_input
+# Loop over each character of login
+0x0804880d <+197>:   jmp    0x804885b <auth+275>
 
-# Check if diff <= 0x15 (21)
-0x0804875c <+21>:    cmpl   $0x15,-0xc(%ebp)
-0x08048760 <+25>:    ja     0x804884a <test+259>  # if >21, random decrypt
+0x0804880f <+199>:   mov    -0x14(%ebp),%eax
+0x08048812 <+202>:   add    0x8(%ebp),%eax
+0x08048815 <+205>:   movzbl (%eax),%eax
+0x08048818 <+208>:   cmp    $0x1f,%al             # if char <= 31
+0x0804881a <+210>:   jg     0x8048823 <auth+219>
+0x0804881c <+212>:   mov    $0x1,%eax             # invalid char
+0x08048821 <+217>:   jmp    0x8048877 <auth+303>
 
-# Jump table based on diff
-0x08048766 <+31>:    mov    -0xc(%ebp),%eax
-0x08048769 <+34>:    shl    $0x2,%eax            # multiply by 4
-0x0804876c <+37>:    add    $0x80489f0,%eax      # jump table base
-0x08048771 <+42>:    mov    (%eax),%eax
-0x08048773 <+44>:    jmp    *%eax                # jump to case
+# Complex hashing: new = old + (char ^ old * something)
+0x08048823 <+219>:   mov    -0x14(%ebp),%eax
+0x08048826 <+222>:   add    0x8(%ebp),%eax
+0x08048829 <+225>:   movzbl (%eax),%eax
+0x0804882c <+228>:   movsbl %al,%eax
+0x0804882f <+231>:   mov    %eax,%ecx
+0x08048831 <+233>:   xor    -0x10(%ebp),%ecx
+0x08048834 <+236>:   mov    $0x88233b2b,%edx
+0x08048839 <+241>:   mov    %ecx,%eax
+0x0804883b <+243>:   mul    %edx
+0x0804883d <+245>:   mov    %ecx,%eax
+0x0804883f <+247>:   sub    %edx,%eax
+0x08048841 <+249>:   shr    %eax
+0x08048843 <+251>:   add    %edx,%eax
+0x08048845 <+253>:   shr    $0xa,%eax
+0x08048848 <+256>:   imul   $0x539,%eax,%eax
+0x0804884e <+262>:   mov    %ecx,%edx
+0x08048850 <+264>:   sub    %eax,%edx
+0x08048852 <+266>:   mov    %edx,%eax
+0x08048854 <+268>:   add    %eax,-0x10(%ebp)
+0x08048857 <+271>:   addl   $0x1,-0x14(%ebp)
 
-# All cases call decrypt(diff) then exit
-0x08048775 <+46>:    mov    -0xc(%ebp),%eax
-0x08048778 <+49>:    mov    %eax,(%esp)
-0x0804877b <+52>:    call   0x8048660 <decrypt>
-0x08048780 <+57>:    jmp    0x8048858 <test+273>
+# Loop for all characters
+0x0804885b <+275>:   mov    -0x14(%ebp),%eax
+0x0804885e <+278>:   cmp    -0xc(%ebp),%eax
+0x08048861 <+281>:   jl     0x804880f <auth+199>
 
-# ... (similar for all cases 0-21)
+# Compare calculated serial with user input
+0x08048863 <+283>:   mov    0xc(%ebp),%eax        # user input
+0x08048866 <+286>:   cmp    -0x10(%ebp),%eax      # vs calculated
+0x08048869 <+289>:   je     0x8048872 <auth+298>
+0x0804886b <+291>:   mov    $0x1,%eax
+0x08048870 <+296>:   jmp    0x8048877 <auth+303>
 
-# Default case (diff > 21)
-0x0804884a <+259>:   call   0x8048520 <rand@plt>
-0x0804884f <+264>:   mov    %eax,(%esp)
-0x08048852 <+267>:   call   0x8048660 <decrypt>
-0x08048857 <+272>:   nop
-0x08048858 <+273>:   leave
-0x08048859 <+274>:   ret
+0x08048872 <+298>:   mov    $0x0,%eax             # SUCCESS!
 ```
-### 7. Examining the Jump Table
+## Bypassing the Anti-Debugging
+### 7. Using GDB to Bypass ptrace
+Since the program uses ptrace() to detect debugging, we need to bypass it:
+
 ```bash
-(gdb) x/22x 0x80489f0
-0x80489f0:    0x08048775    0x08048785    0x08048795    0x080487a5
-0x8048a00:    0x080487b5    0x080487c5    0x080487d5    0x080487e2
-0x8048a10:    0x080487ef    0x080487fc    0x08048809    0x08048816
-0x8048a20:    0x08048823    0x08048830    0x0804883d    0x0804884a
-Each entry points to code that calls decrypt(diff).
+(gdb) catch syscall ptrace
+Catchpoint 1 (syscall 'ptrace' [26])
+
+(gdb) commands 1
+Type commands for breakpoint(s) 1, one per line.
+End with a line saying just "end".
+>set $eax=0
+>continue
+>end
+This makes ptrace() always return 0 (success), bypassing the anti-debugging check.
 ```
-### 8. Examining decrypt function
+### 8. Finding the Serial for "coucou"
+Set a breakpoint at the comparison:
+
 ```bash
-(gdb) disas decrypt
-The decrypt function takes a number and uses it to generate a password. It likely does some mathematical transformation.
-```
-### 9. Understanding the Logic
-The program does:
+(gdb) b *auth+286
+Breakpoint 2 at 0x8048866
 
-Takes user input (integer) via scanf("%d")
-
-Calls test(user_input, 0x1337d00d)
-
-Calculates diff = 0x1337d00d - user_input
-
-If diff <= 21, calls decrypt(diff) with the diff value
-
-Otherwise, calls decrypt(rand()) with a random number
-
-The decrypt function likely:
-
-Generates a string based on the input
-
-Compares it with something
-
-If correct, spawns a shell
-
-## The Vulnerability
-### 10. Understanding the "Password"
-The program doesn't ask for a text password - it asks for a number! It expects an integer input.
-
-The key is that test calculates 0x1337d00d - user_input. The program then uses this difference to generate a password.
-
-If we can make diff a specific value that makes decrypt generate the correct string, we can bypass authentication.
-
-### 11. Finding the Correct Input
-We need to reverse decrypt to understand what it does. But looking at the pattern, decrypt likely:
-
-Takes a number
-
-Uses it as a key to decode a string
-
-If the decoded string matches something, spawns a shell
-
-### 12. The Simple Solution
-After analyzing the binary, the correct approach is to input the number that makes diff = 0:
-
-```python
-0x1337d00d - user_input = 0
-user_input = 0x1337d00d = 322424845
-```
-Let's try:
-```bash
-level03@OverRide:~$ ./level03
+(gdb) run
+Starting program: /home/users/level06/level06
 ***********************************
-*		level03		**
+*		level06		  *
 ***********************************
-Password:322424845
+-> Enter Login: coucou
+***********************************
+***** NEW ACCOUNT DETECTED ********
+***********************************
+-> Enter Serial: 1234
+
+Catchpoint 1 (call to syscall ptrace), 0xf7fdb440 in __kernel_vsyscall ()
+Catchpoint 1 (returned from syscall ptrace), 0xf7fdb440 in __kernel_vsyscall ()
+
+Breakpoint 2, 0x08048866 in auth ()
+
+(gdb) p $eax
+$1 = 1234                   # Our input serial
+
+(gdb) x/x $ebp-0x10
+0xffffd5b8:     0x005f1ae1  # Calculated serial
+The calculated serial is 0x005f1ae1 = 6232801 in decimal.
+```
+### Exploitation
+## 9. The Correct Credentials
+For login "coucou", the valid serial is 6232801.
+
+```bash
+level06@OverRide:~$ ./level06
+***********************************
+*		level06		  *
+***********************************
+-> Enter Login: coucou
+***********************************
+***** NEW ACCOUNT DETECTED ********
+***********************************
+-> Enter Serial: 6232801
+Authenticated!
 $ whoami
-level04
-$ cat /home/users/level04/.pass
-kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
-Success! The password for level04 is: kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+level07
+$ cat /home/users/level07/.pass
+GbcPDRgsFK77LNnnuh7QyFYA2942Gp1yKEfcYt7s
+$ exit
 ```
-### 13. Why This Works
-When we input 322424845:
-
-diff = 0x1337d00d - 322424845
-
-0x1337d00d in decimal is exactly 322424845
-
-So diff = 0
-
-The jump table has a case for diff = 0 (first entry at 0x80489f0), which calls decrypt(0). This likely generates the correct password string and spawns a shell.
-
-Vulnerability Summary
-Root Cause:
-Integer comparison: The program uses a fixed constant 0x1337d00d to compute a difference
-
-Jump table vulnerability: The difference is used as an index into a jump table
-
-We control the difference by choosing our input
-
-Exploitation Technique:
-Calculate correct input: user_input = 0x1337d00d = 322424845
-
-Enter this number as the password
-
-diff = 0 triggers the first case in the jump table
-
-decrypt(0) generates the correct authentication
-
-Shell spawned with level04 privileges
-
-**Key Learning Points:**
-Integer inputs can be just as vulnerable as string inputs
-
-Jump tables can be manipulated by controlling the index
-
-Constants in code can be reversed to find the correct input
-
-Not all vulnerabilities are buffer overflows
-
-## Final Commands
+### 10. Switch to level07
 ```bash
-./level03
-Password: 322424845
-$ cat /home/users/level04/.pass
-kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+level06@OverRide:~$ su level07
+Password: GbcPDRgsFK77LNnnuh7QyFYA2942Gp1yKEfcYt7s
+level07@OverRide:~$
 ```
-Password for level04: kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+## Vulnerability Summary
+**Root Cause:**
+Complex authentication: The program uses a custom hashing algorithm
+
+No vulnerability per se - we need to reverse the algorithm or extract the serial at runtime
+
+## Exploitation Technique:
+Bypass ptrace: Used GDB's catch syscall to force ptrace to return 0
+
+Extract serial: Set breakpoint at comparison to read the calculated value
+
+Enter credentials: Used the extracted serial to authenticate
+
+Shell obtained: system("/bin/sh") executed with level07 privileges
+
+## Key Learning Points:
+Anti-debugging techniques can be bypassed with GDB
+
+Custom hashing algorithms can be reversed or extracted at runtime
+
+Breakpoints can be used to read intermediate values
+
+ptrace is a common anti-debugging mechanism
+
+**Final Commands**
+```bash
+# Run the program normally
+./level06
+
+# Enter login
+coucou
+
+# Enter serial (from GDB extraction)
+6232801
+Password for level07: GbcPDRgsFK77LNnnuh7QyFYA2942Gp1yKEfcYt7s
+```
